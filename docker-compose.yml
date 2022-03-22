@@ -1,0 +1,79 @@
+version: '3'
+
+networks:
+  kafka-network:
+
+
+services:
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - kafka-network
+    healthcheck:
+      test: "exit 0"
+  kafka:
+    image: 'bitnami/kafka:latest'
+    ports:
+      - '9092:9092'
+      - '9093:9093'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://192.168.0.26:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka-network
+    healthcheck:
+      test: "exit 0"
+    
+    
+  kafka-producer:
+    build:
+      context: ./
+      dockerfile: Dockerfile_1
+    depends_on:
+      kafka:
+        condition: service_healthy     
+    image: kafka-producer:latest
+    ports:
+      - 8081:8081
+    expose:
+      - 8081
+    container_name: kafka-producer
+    hostname: kafka-producer
+    restart: always
+    networks:
+      - kafka-network
+    
+  kafka-consumer:
+    build:
+      context: ./
+      dockerfile: Dockerfile_2
+    depends_on:
+      kafka:
+        condition: service_healthy     
+    image: kafka-consumer:latest
+    ports:
+      - 8082:8082
+    expose:
+      - 8082
+    container_name: kafka-consumer
+    hostname: kafka-consumer
+    restart: always
+    networks:
+      - kafka-network
+
+      
+
+
+
